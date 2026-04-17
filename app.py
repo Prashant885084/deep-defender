@@ -191,9 +191,9 @@ def analytics():
 
 
 # ─── SERVE FRONTEND ───────────────────────────────────────────────
-@app.route("/layer1")
-def layer1():
-    return send_from_directory("static", "layer1.html")
+@app.route("/index.html")
+def index():
+    return send_from_directory("static", "index.html")
 
 
 if __name__ == "__main__":
