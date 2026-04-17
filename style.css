@@ -1,0 +1,110 @@
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+/* Page background */
+body {
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Form container */
+#detectForm {
+    background: #fff;
+    padding: 25px;
+    width: 360px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+/* Title */
+#detectForm h2 {
+    text-align: center;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+/* Labels */
+label {
+    display: block;
+    margin-top: 12px;
+    font-size: 14px;
+    color: #444;
+}
+
+/* Inputs */
+input[type="file"],
+input[type="text"] {
+    width: 100%;
+    margin-top: 6px;
+    padding: 9px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    transition: 0.3s;
+}
+
+/* Focus effect */
+input:focus {
+    border-color: #2a5298;
+    box-shadow: 0 0 5px rgba(42,82,152,0.3);
+    outline: none;
+}
+
+/* Button */
+button {
+    width: 100%;
+    margin-top: 18px;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    background: #2a5298;
+    color: #fff;
+    font-size: 15px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+/* Button hover */
+button:hover {
+    background: #1e3c72;
+}
+
+/* Result box */
+#result {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 6px;
+    background: #f4f6f9;
+    text-align: center;
+    min-height: 40px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Default result text (success case) */
+#result p {
+    color: green;
+}
+
+/* Loading text */
+#result:empty::before {
+    content: "";
+}
+
+/* When showing "Processing..." */
+#result:contains("Processing") {
+    color: #555;
+}
+
+/* Error (your inline style will override, but we support it) */
+#result p[style*="red"] {
+    font-weight: bold;
+    color: red !important;
+}
