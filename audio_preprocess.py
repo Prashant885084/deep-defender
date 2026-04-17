@@ -1,5 +1,12 @@
-import librosa
-import numpy as np
+try:
+    import librosa
+except ImportError:
+    raise ImportError("librosa is not installed. Install it using: pip install librosa")
+
+try:
+    import numpy as np
+except ImportError:
+    raise ImportError("numpy is not installed. Install it using: pip install numpy")
 
 def load_and_preprocess_audio(
     audio_path,

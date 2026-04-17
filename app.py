@@ -57,13 +57,12 @@ def seed_demo_data():
         conn.close()
         return  # already seeded
 
-    image_files = ["face_001.jpg","photo_scan.png","user_upload.jpg",
-                   "deepfake_test.jpg","real_photo.jpg","synthetic_gen.png",
+    image_files = ["face_001.jpg","photo_scan.png","user_upload.jpg","synthetic_gen.png",
                    "portrait_ai.jpg","news_img.jpg","social_post.jpg","id_scan.jpg"]
 
     voice_files = ["audio_clip.wav","voice_msg.mp3","call_record.wav",
-                   "interview.mp3","synthetic_voice.wav","news_audio.wav",
-                   "deepfake_audio.mp3","real_speech.wav","podcast_seg.mp3","phone_call.wav"]
+                   "synthetic_voice.wav","deepfake_audio.mp3","real_speech.wav","podcast_seg.mp3",
+                   "phone_call.wav"]
 
     base = datetime.now() - timedelta(days=7)
     for i, f in enumerate(image_files):
