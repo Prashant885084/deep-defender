@@ -2,13 +2,12 @@
 
 Deep Defender is a Flask-based prototype for detecting potentially fake or synthetic media. It combines a lightweight web UI, postgreSQl-backed detection history, URL-based media analysis, and optional model code for image and audio deepfake detection.
 
-This repository appears to have been built as a hackathon/demo project, and the current implementation mixes production-like pieces with simulated detection flows. The README below reflects the code as it exists today.
+This repository  have been built as a hackathon/demo project, and the current implementation mixes production-like pieces with simulated detection flows. The README below reflects the code as it exists today.
 
 ## What the project does
 
-- Analyzes image or audio URLs through `/api/url/analyze`
+- Analyzes image and audio and URLs through `/api/url/analyze` /api/image/detect /api/voice/detect
 - Extracts linked media from HTML pages when the URL is not a direct media file
-- Blocks private and local hosts before fetching remote content
 - Stores image, voice, and URL detection history in `detections.db`
 - Exposes analytics and history endpoints for the UI
 - Includes optional TensorFlow and Hugging Face model wrappers for future or partial integration
@@ -76,7 +75,7 @@ These routes:
 
 - accept JSON with a `filename`
 - generate a fake or real result using random values
-- store the record in SQLite
+- store the record in PostgreSQl
 - return a response for the UI
 
 They do not currently upload or analyze the actual media file contents.
