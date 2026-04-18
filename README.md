@@ -27,7 +27,7 @@ There are two different detection paths in the codebase:
 
 - Backend: Flask
 - Frontend: HTML, CSS, vanilla JavaScript
-- Database: SQLite
+- Database: PostgreSQL
 - Optional ML/runtime dependencies:
   - TensorFlow
   - OpenCV
