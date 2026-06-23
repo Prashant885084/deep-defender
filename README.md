@@ -200,11 +200,11 @@ This repo includes `render.yaml`, so the easiest path is Render Blueprints:
 1. Push the latest code to GitHub.
 2. In Render, choose **New > Blueprint**.
 3. Select this repository and apply the `render.yaml`.
-4. Render will create a Python web service named `deep-defender-backend`.
+4. Render will create a Python web service named `deep-defender-an6z`.
 5. After deploy, test:
 
 ```text
-https://deep-defender-backend.onrender.com/health
+https://deep-defender-an6z.onrender.com/health
 ```
 
 If Render gives your service a different URL, update `config.js` with that URL and push again so Netlify calls the correct backend.
@@ -233,7 +233,7 @@ The app uses SQLite by default. For persistent production history, create a Rend
 The frontend reads `window.DEEP_DEFENDER_API_BASE_URL` from `config.js`. For the default Render service name it already points Netlify traffic to:
 
 ```text
-https://deep-defender-backend.onrender.com
+https://deep-defender-an6z.onrender.com
 ```
 
 For local Flask testing, the value stays blank and calls the same origin.
