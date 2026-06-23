@@ -1,6 +1,6 @@
 # Deep Defender
 website URL:--  https://deepdefenders.netlify.app/
-Deep Defender is a Flask-based prototype for detecting potentially fake or synthetic media. It combines a lightweight web UI, postgreSQl-backed detection history, URL-based media analysis, and optional model code for image and audio deepfake detection.
+Deep Defender is a Flask-based prototype for detecting potentially fake or synthetic media. It combines a lightweight web UI, PostgreSQL-backed detection history, URL-based media analysis, and optional model code for image and audio deepfake detection. for api testing only https://deep-defender-an6z.onrender.com/
 
 This repository  have been built as a hackathon/demo project, and the current implementation mixes production-like pieces with simulated detection flows. The README below reflects the code as it exists today.
 
