@@ -43,8 +43,13 @@ deep-defender/
 ├── app.py                          # Main Flask app, routes, DB setup, URL analysis
 ├── .app.py                         # Small launcher that calls main()
 ├── index.html                      # Frontend UI
+├── config.js                       # Frontend backend API URL config
 ├── script.js                       # Frontend interactions and API calls
 ├── style.css                       # Frontend styling
+├── render.yaml                     # Render backend deploy config
+├── requirements.txt                # Backend/runtime dependencies
+├── requirements-ml.txt             # Optional TensorFlow/Hugging Face dependencies
+├── .python-version                 # Render Python runtime line
 ├── detections.db                   # SQLite database used by the app
 ├── image_preprocess.py             # Image preprocessing for TensorFlow model path
 ├── image_xception.py               # Xception-based image classifier definition
@@ -154,21 +159,21 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 2. Install the base dependency
+### 2. Install dependencies
 
 ```bash
-pip install flask
+pip install -r requirements.txt
 ```
 
-### 3. Install optional analysis dependencies
+### 3. Install optional ML dependencies
 
-For the current URL-analysis path and model helpers, you will likely want:
+The Render deploy uses the lighter backend dependency set in `requirements.txt`. If you later want the TensorFlow and Hugging Face helper code locally, install:
 
 ```bash
-pip install numpy pillow opencv-python librosa tensorflow torch transformers
+pip install -r requirements-ml.txt
 ```
 
-If you only want to launch the demo UI and simulated file detection routes, Flask is the only strict dependency visible from `app.py`. The optional libraries are used when the URL-analysis route performs media decoding, feature extraction, or model loading.
+TensorFlow wheels are not available for every Python release, so use Python 3.12 for the optional ML environment.
 
 ## Run the app
 
@@ -187,6 +192,51 @@ The server starts on:
 ```text
 http://localhost:9000
 ```
+
+## Deploy backend on Render
+
+This repo includes `render.yaml`, so the easiest path is Render Blueprints:
+
+1. Push the latest code to GitHub.
+2. In Render, choose **New > Blueprint**.
+3. Select this repository and apply the `render.yaml`.
+4. Render will create a Python web service named `deep-defender-backend`.
+5. After deploy, test:
+
+```text
+https://deep-defender-backend.onrender.com/health
+```
+
+If Render gives your service a different URL, update `config.js` with that URL and push again so Netlify calls the correct backend.
+
+Manual Render settings are:
+
+```text
+Language: Python 3
+Build Command: pip install -r requirements.txt
+Start Command: gunicorn app:app --timeout 120
+Health Check Path: /health
+```
+
+Environment variables:
+
+```text
+CORS_ORIGINS=https://deepdefenders.netlify.app
+FLASK_DEBUG=false
+SEED_DEMO_DATA=true
+```
+
+The app uses SQLite by default. For persistent production history, create a Render PostgreSQL database and set `DATABASE_URL` to its internal database URL.
+
+## Connect Netlify frontend
+
+The frontend reads `window.DEEP_DEFENDER_API_BASE_URL` from `config.js`. For the default Render service name it already points Netlify traffic to:
+
+```text
+https://deep-defender-backend.onrender.com
+```
+
+For local Flask testing, the value stays blank and calls the same origin.
 
 ## Frontend usage
 
@@ -225,12 +275,11 @@ Important note:
 - Blocks localhost and private/reserved IP ranges for URL analysis
 - Limits HTML fetch size to 1 MB
 - Limits media download size to 15 MB
-- Restricts served frontend files to `index.html`, `script.js`, and `style.css`
+- Restricts served frontend files to `index.html`, `script.js`, `style.css`, and `config.js`
 
 ## Known limitations
 
 - File upload analysis is simulated and does not inspect actual uploaded bytes
-- There is no `requirements.txt` or `pyproject.toml` yet
 - The TensorFlow model path depends on local `.weights.h5` files that are not included here
 - Hugging Face model wrappers are present but not integrated into the running Flask app
 - `auto_transformer.py` appears to duplicate `audio_transformer.py`

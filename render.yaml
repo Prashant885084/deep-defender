@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: deep-defender-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --timeout 120
+    healthCheckPath: /health
+    envVars:
+      - key: CORS_ORIGINS
+        value: https://deepdefenders.netlify.app
+      - key: FLASK_DEBUG
+        value: "false"
+      - key: SEED_DEMO_DATA
+        value: "true"

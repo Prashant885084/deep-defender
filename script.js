@@ -1,3 +1,9 @@
+const API_BASE_URL = (window.DEEP_DEFENDER_API_BASE_URL || '').replace(/\/$/, '');
+
+function apiUrl(path) {
+    return `${API_BASE_URL}${path}`;
+}
+
 function switchTab(event, tabId) {
     const panels = document.querySelectorAll('.tab-panel');
     const links = document.querySelectorAll('.tab-link');
@@ -45,7 +51,7 @@ async function processAnalysis(source) {
                 throw new Error('Enter a URL to analyze.');
             }
 
-            const response = await fetch('/api/url/analyze', {
+            const response = await fetch(apiUrl('/api/url/analyze'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -61,7 +67,7 @@ async function processAnalysis(source) {
             const filename = source;
             const isAudio = /\.(wav|mp3|m4a|ogg|flac)$/i.test(filename);
             const endpoint = isAudio ? '/api/voice/detect' : '/api/image/detect';
-            const response = await fetch(endpoint, {
+            const response = await fetch(apiUrl(endpoint), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

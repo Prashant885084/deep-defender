@@ -10,11 +10,12 @@ from datetime import datetime, timedelta
 from html.parser import HTMLParser
 
 from flask import Flask, abort, jsonify, request, send_from_directory
+from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FRONTEND_FILES = {"index.html", "script.js", "style.css"}
+FRONTEND_FILES = {"index.html", "script.js", "style.css", "config.js"}
 MAX_HTML_BYTES = 1_000_000
 MAX_DOWNLOAD_BYTES = 15 * 1024 * 1024
 DEFAULT_SQLITE_PATH = os.getenv("SQLITE_PATH", os.path.join(BASE_DIR, "detections.db"))
@@ -28,6 +29,16 @@ AUDIO_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg", ".flac"}
 
 app = Flask(__name__)
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "https://deepdefenders.netlify.app,http://localhost:9000,http://127.0.0.1:9000",
+    ).split(",")
+    if origin.strip()
+]
+CORS(app, resources={r"/api/*": {"origins": cors_origins}, r"/health": {"origins": cors_origins}})
 
 # ─── DATABASE CONFIG ──────────────────────────────────────────────
 database_url = os.getenv("DATABASE_URL", "")
