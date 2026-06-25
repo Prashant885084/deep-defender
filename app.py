@@ -317,7 +317,7 @@ def load_optional_model(media_type):
             os.path.join(BASE_DIR, "image_xception.weights.h5"),
         ]
         try:
-            import tensorflow as tf  # noqa: F401
+            import tensorflow as tf  # noqa: F401  # pyright: ignore[reportMissingModuleSource]
             from image_xception import build_xception_classifier, load_xception_weights
 
             for candidate in weight_candidates:
@@ -333,7 +333,7 @@ def load_optional_model(media_type):
             os.path.join(BASE_DIR, "audio_transformer.weights.h5"),
         ]
         try:
-            import tensorflow as tf  # noqa: F401
+            import tensorflow as tf  # noqa: F401  # pyright: ignore[reportMissingModuleSource]
             from audio_transformer import build_audio_transformer
 
             for candidate in weight_candidates:
