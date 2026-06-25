@@ -17,7 +17,7 @@ function switchTab(event, tabId) {
 
 document.getElementById('file-input').addEventListener('change', function(e) {
     if (e.target.files.length > 0) {
-        processAnalysis(e.target.files[0].name);
+        processAnalysis(e.target.files[0]);
     }
 });
 
@@ -63,25 +63,24 @@ async function processAnalysis(source) {
             if (!response.ok) {
                 throw new Error(payload.error || 'URL analysis failed.');
             }
-        } else {
-            const filename = source;
+        } else if (source instanceof File) {
+            const filename = source.name;
             const isAudio = /\.(wav|mp3|m4a|ogg|flac)$/i.test(filename);
             const endpoint = isAudio ? '/api/voice/detect' : '/api/image/detect';
+            const formData = new FormData();
+            formData.append('file', source);
+
             const response = await fetch(apiUrl(endpoint), {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ filename })
+                body: formData
             });
 
             payload = await response.json();
             if (!response.ok) {
                 throw new Error(payload.error || 'File analysis failed.');
             }
-            payload.reason = isAudio
-                ? `Audio file ${filename} was analyzed by the backend voice pipeline.`
-                : `Image file ${filename} was analyzed by the backend image pipeline.`;
+        } else {
+            throw new Error('Choose an image or audio file to analyze.');
         }
 
         spinner.classList.add('hidden');
@@ -118,5 +117,7 @@ const dropArea = document.getElementById('drop-area');
 
 dropArea.addEventListener('drop', e => {
     const file = e.dataTransfer.files[0];
-    processAnalysis(file.name);
+    if (file) {
+        processAnalysis(file);
+    }
 });

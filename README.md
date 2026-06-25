@@ -2,7 +2,7 @@
 website URL:--  https://deepdefenders.netlify.app/
 Deep Defender is a Flask-based prototype for detecting potentially fake or synthetic media. It combines a lightweight web UI, PostgreSQL-backed detection history, URL-based media analysis, and optional model code for image and audio deepfake detection. for api testing only https://deep-defender-an6z.onrender.com/
 
-This repository  have been built as a hackathon/demo project, and the current implementation mixes production-like pieces with simulated detection flows. The README below reflects the code as it exists today.
+This repository has been built as a hackathon/demo project, and the current implementation mixes production-like pieces with heuristic fallbacks. The README below reflects the code as it exists today.
 
 ## What the project does
 
@@ -17,10 +17,10 @@ This repository  have been built as a hackathon/demo project, and the current im
 There are two different detection paths in the codebase:
 
 1. `Upload Media` flow in the UI
-   This is currently demo behavior. The frontend sends only the filename to the backend, and the backend generates a random fake/real result for image and voice uploads.
+   The frontend uploads the actual selected image or audio file. The backend saves it temporarily, analyzes the media bytes through the optional trained model path when weights are available, and otherwise uses deterministic image/audio heuristics.
 
 2. `Analyze URL` flow in the UI
-   This is the more real analysis path. The backend fetches a remote image or audio file, tries to use optional local TensorFlow weights if present, and otherwise falls back to heuristic analysis based on media characteristics and URL metadata.
+   The backend fetches a remote image or audio file, tries to use optional local TensorFlow weights if present, and otherwise falls back to heuristic analysis based on media characteristics and URL metadata.
 
 ## Tech stack
 
@@ -78,12 +78,14 @@ The frontend chooses one of these endpoints based on file extension:
 
 These routes:
 
-- accept JSON with a `filename`
-- generate a fake or real result using random values
-- store the record in PostgreSQl
+- accept multipart form data with a real `file`
+- reject filename-only requests because they cannot be accurately analyzed
+- run the optional trained model path when compatible weights are present
+- otherwise run deterministic media heuristics
+- store the record in PostgreSQL
 - return a response for the UI
 
-They do not currently upload or analyze the actual media file contents.
+Uploaded filenames are not used as suspicious keyword evidence, which helps avoid false positives for authentic files with confusing names.
 
 ### 2. URL analysis endpoint
 
@@ -244,7 +246,7 @@ Open the app in a browser and use one of the tabs:
 
 - `Upload Media`
   - choose an image or audio file
-  - current behavior is demo-only and uses filename-based simulated results
+  - the selected file is uploaded and analyzed by the backend
 
 - `Analyze URL`
   - paste a public `http://` or `https://` URL
@@ -267,7 +269,7 @@ The repository contains model code that is only partially wired into the live ap
 
 Important note:
 
-- The Flask routes currently use the TensorFlow weight-loading path only for URL analysis
+- The Flask routes use the TensorFlow weight-loading path for both file uploads and URL analysis when compatible local weights are available
 - The Hugging Face pipeline classes are present but not currently called from `app.py`
 
 ## Security and safety measures already present
@@ -279,7 +281,6 @@ Important note:
 
 ## Known limitations
 
-- File upload analysis is simulated and does not inspect actual uploaded bytes
 - The TensorFlow model path depends on local `.weights.h5` files that are not included here
 - Hugging Face model wrappers are present but not integrated into the running Flask app
 - `auto_transformer.py` appears to duplicate `audio_transformer.py`
@@ -288,7 +289,7 @@ Important note:
 
 ## Good next steps
 
-- Replace simulated file detection with real multipart upload handling
+- Add a labeled validation set and tune thresholds against real examples
 - Add a proper dependency manifest
 - Wire the Hugging Face pipelines into the Flask routes
 - Add tests for URL validation, media fetching, and analytics responses
@@ -297,4 +298,4 @@ Important note:
 
 ## Demo-friendly summary
 
-Deep Defender is a strong prototype for a deepfake-detection dashboard. The URL-analysis pipeline contains the most meaningful backend logic today, while the upload flow is still a demo stub. If you want to evolve this into a more complete system, the existing repo already gives you a usable Flask shell, SQLite history, frontend scaffolding, and multiple starting points for ML model integration.
+Deep Defender is a strong prototype for a deepfake-detection dashboard. The upload and URL flows now inspect actual media bytes, with deterministic heuristic fallbacks when trained weights are not available. To reach dependable 70-80% accuracy, the next major step is validating against a labeled image/audio dataset and wiring in a trained model that matches that data.

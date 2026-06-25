@@ -13,6 +13,7 @@ from flask import Flask, abort, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
+from werkzeug.utils import secure_filename
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_FILES = {"index.html", "script.js", "style.css", "config.js"}
@@ -29,6 +30,7 @@ AUDIO_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg", ".flac"}
 
 app = Flask(__name__)
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+app.config["MAX_CONTENT_LENGTH"] = MAX_DOWNLOAD_BYTES
 
 cors_origins = [
     origin.strip()
@@ -290,6 +292,72 @@ def fetch_remote_media(url, depth=0):
         }
 
 
+def detect_uploaded_media_type(uploaded_file, expected_media_type):
+    filename = secure_filename(uploaded_file.filename or "")
+    if not filename:
+        raise ValueError("Please choose a file to analyze.")
+
+    media_type = classify_media_type(uploaded_file.content_type, filename)
+    if media_type != expected_media_type:
+        raise ValueError(f"Please upload a supported {expected_media_type} file.")
+
+    return filename, media_type
+
+
+def save_uploaded_media(uploaded_file, media_type, filename):
+    _, ext = os.path.splitext(filename.lower())
+    suffix = ext if ext else (".jpg" if media_type == "image" else ".wav")
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir=BASE_DIR)
+
+    try:
+        uploaded_file.stream.seek(0)
+    except (AttributeError, OSError):
+        pass
+
+    total = 0
+    try:
+        while True:
+            chunk = uploaded_file.stream.read(64 * 1024)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_DOWNLOAD_BYTES:
+                raise ValueError("The uploaded file is too large to analyze.")
+            tmp_file.write(chunk)
+    finally:
+        tmp_file.close()
+
+    if total == 0:
+        os.remove(tmp_file.name)
+        raise ValueError("The uploaded file is empty.")
+
+    return tmp_file.name
+
+
+def analyze_uploaded_media(uploaded_file, expected_media_type):
+    filename, media_type = detect_uploaded_media_type(uploaded_file, expected_media_type)
+    file_path = save_uploaded_media(uploaded_file, media_type, filename)
+
+    try:
+        # Uploaded filenames are user-controlled metadata, so avoid using them as
+        # suspicious keyword evidence. Analyze the media bytes instead.
+        score, reasons, model_used = analyze_media(file_path, media_type, "", "")
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    payload = make_detection_payload(
+        source_url=filename,
+        media_type=media_type,
+        score=score,
+        reasons=reasons,
+        model_used=model_used,
+        resolved_url=filename,
+    )
+    payload["filename"] = filename
+    return payload
+
+
 def try_load_image_modules():
     try:
         import cv2
@@ -353,13 +421,13 @@ def heuristic_image_analysis(file_path, source_url, resolved_url):
 
     if not modules:
         final_score = min(max(score + 0.18, 0.08), 0.92)
-        return final_score, reasons or ["Image modules unavailable; using URL metadata fallback."], "metadata-heuristic"
+        return final_score, reasons or ["Image analysis modules unavailable; using conservative fallback."], "metadata-heuristic"
 
     cv2 = modules["cv2"]
     np = modules["np"]
     img = cv2.imread(file_path)
     if img is None:
-        raise ValueError("Downloaded image could not be decoded.")
+        raise ValueError("Image file could not be decoded.")
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -387,7 +455,7 @@ def heuristic_audio_analysis(file_path, source_url, resolved_url):
 
     if not modules:
         final_score = min(max(score + 0.18, 0.08), 0.92)
-        return final_score, reasons or ["Audio modules unavailable; using URL metadata fallback."], "metadata-heuristic"
+        return final_score, reasons or ["Audio analysis modules unavailable; using conservative fallback."], "metadata-heuristic"
 
     librosa = modules["librosa"]
     np = modules["np"]
@@ -395,7 +463,7 @@ def heuristic_audio_analysis(file_path, source_url, resolved_url):
     duration = len(y) / sr if sr else 0.0
 
     if duration <= 0:
-        raise ValueError("Downloaded audio could not be decoded.")
+        raise ValueError("Audio file could not be decoded.")
 
     flatness = float(np.mean(librosa.feature.spectral_flatness(y=y)))
     rms_var = float(np.std(librosa.feature.rms(y=y)))
@@ -519,27 +587,30 @@ def seed_demo_data():
 # ─── IMAGE ROUTES ─────────────────────────────────────────────────
 @app.route("/api/image/detect", methods=["POST"])
 def image_detect():
-    data = request.get_json(silent=True) or {}
-    filename = data.get("filename", "unknown.jpg")
-    result = random.choice(["FAKE", "FAKE", "REAL"])
-    confidence = round(random.uniform(0.75, 0.99), 2)
-    detected_at = datetime.now()
+    try:
+        uploaded_file = request.files.get("file")
+        if uploaded_file is None:
+            raise ValueError("Please upload an actual image file; filename-only requests cannot be analyzed.")
 
-    rec = ImageDetection(
-        filename=filename,
-        result=result,
-        confidence=confidence,
-        detected_at=detected_at
-    )
-    db.session.add(rec)
-    db.session.commit()
+        payload = analyze_uploaded_media(uploaded_file, "image")
+        detected_at = datetime.now()
+        payload["detected_at"] = detected_at.strftime("%Y-%m-%d %H:%M:%S")
 
-    return jsonify({
-        "result": result,
-        "confidence": confidence,
-        "filename": filename,
-        "detected_at": detected_at.strftime("%Y-%m-%d %H:%M:%S")
-    }), 201
+        rec = ImageDetection(
+            filename=payload["filename"],
+            result=payload["result"],
+            confidence=payload["confidence"],
+            model_used=payload["model_used"],
+            detected_at=detected_at
+        )
+        db.session.add(rec)
+        db.session.commit()
+
+        return jsonify(payload), 201
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": f"Image analysis failed: {exc}"}), 500
 
 
 @app.route("/api/image/history", methods=["GET"])
@@ -551,30 +622,32 @@ def image_history():
 # ─── VOICE ROUTES ─────────────────────────────────────────��───────
 @app.route("/api/voice/detect", methods=["POST"])
 def voice_detect():
-    data = request.get_json(silent=True) or {}
-    filename = data.get("filename", "unknown.wav")
-    duration = round(random.uniform(3.0, 30.0), 1)
-    result = random.choice(["FAKE", "FAKE", "REAL"])
-    confidence = round(random.uniform(0.70, 0.97), 2)
-    detected_at = datetime.now()
+    try:
+        uploaded_file = request.files.get("file")
+        if uploaded_file is None:
+            raise ValueError("Please upload an actual audio file; filename-only requests cannot be analyzed.")
 
-    rec = VoiceDetection(
-        filename=filename,
-        result=result,
-        confidence=confidence,
-        duration_sec=duration,
-        detected_at=detected_at
-    )
-    db.session.add(rec)
-    db.session.commit()
+        payload = analyze_uploaded_media(uploaded_file, "audio")
+        detected_at = datetime.now()
+        payload["detected_at"] = detected_at.strftime("%Y-%m-%d %H:%M:%S")
+        payload["duration_sec"] = 0.0
 
-    return jsonify({
-        "result": result,
-        "confidence": confidence,
-        "filename": filename,
-        "duration_sec": duration,
-        "detected_at": detected_at.strftime("%Y-%m-%d %H:%M:%S")
-    }), 201
+        rec = VoiceDetection(
+            filename=payload["filename"],
+            result=payload["result"],
+            confidence=payload["confidence"],
+            duration_sec=payload["duration_sec"],
+            model_used=payload["model_used"],
+            detected_at=detected_at
+        )
+        db.session.add(rec)
+        db.session.commit()
+
+        return jsonify(payload), 201
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": f"Audio analysis failed: {exc}"}), 500
 
 
 @app.route("/api/voice/history", methods=["GET"])
